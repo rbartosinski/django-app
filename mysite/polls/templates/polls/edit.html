@@ -2,12 +2,13 @@
 {% load static %}
 {% block content %}
 
-{% if error_message %}
-{{ error_message }}
-{% else %}
+{% if messages %}
+    {% for message in messages %}
+<h3>{{ message }}</h3>
+    {% endfor %}
 {% endif %}
 
-<form action="{% url 'polls:index' %}" method="post">
+<form action="{% url 'polls:edit' question.id %}" method="post">
     {% csrf_token %}
     {{ form.as_p }}
     <input type="submit" value="Zapisz">
