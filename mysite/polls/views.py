@@ -6,7 +6,7 @@ from django.utils import timezone
 from django.views import generic, View
 
 from .models import Question, Choice
-from .forms import QuestionForm
+from .forms import QuestionForm, ChoiceForm
 
 
 class IndexView(View):
@@ -26,8 +26,18 @@ class IndexView(View):
             Question.objects.create(**form.cleaned_data)
         else:
             messages.error(request, 'Message: Form is not valid')
-            HttpResponseRedirect(reverse('polls:index'))
+            return HttpResponseRedirect(reverse('polls:index'))
         return HttpResponseRedirect(reverse('polls:index'))
+
+
+class DetailView(View):
+
+    def get(self, request, question_id):
+        question = get_object_or_404(Question, pk=question_id)
+        context = {
+            'question': question,
+        }
+        return render(request, 'polls/detail.html', context)
 
 
 class EditQuestionView(View):
@@ -53,18 +63,74 @@ class EditQuestionView(View):
             question.save()
         else:
             messages.error(request, 'Message: Form is not valid')
-            HttpResponseRedirect(reverse('polls:edit'))
+            return HttpResponseRedirect(reverse('polls:edit'))
         return HttpResponseRedirect(reverse('polls:detail', args=(question.id,)))
 
 
-class DetailView(View):
+class DeleteQuestionView(View):
 
     def get(self, request, question_id):
         question = get_object_or_404(Question, pk=question_id)
+        question.delete()
+        messages.info(request, 'Message: Question ID {} deleted'.format(question_id))
+        return HttpResponseRedirect(reverse('polls:index'))
+
+
+class AddChoiceView(View):
+
+    def get(self, request, question_id):
+        question = get_object_or_404(Question, pk=question_id)
+        form = ChoiceForm(initial={
+            'question': question_id,
+            'votes': 0,
+        })
         context = {
+            'form': form,
             'question': question,
         }
-        return render(request, 'polls/detail.html', context)
+        return render(request, 'polls/add_choice.html', context)
+
+    def post(self, request, question_id):
+        question = get_object_or_404(Question, pk=question_id)
+        form = ChoiceForm(request.POST)
+        if form.is_valid():
+            Choice.objects.create(**form.cleaned_data)
+        else:
+            messages.error(request, 'Message: Form is not valid')
+            return HttpResponseRedirect(reverse('polls:add_choice'))
+        return HttpResponseRedirect(reverse('polls:detail', args=(question.id,)))
+
+
+class EditChoiceView(View):
+
+    def get(self, request, question_id, choice_id):
+        question = get_object_or_404(Question, pk=question_id)
+        choice = get_object_or_404(Choice, pk=choice_id)
+        form = ChoiceForm(initial={
+            'question': question_id,
+            'choice_text': choice.choice_text,
+            'votes': choice.votes,
+        })
+        context = {
+            'form': form,
+            'question': question,
+            'choice': choice,
+        }
+        return render(request, 'polls/edit_choice.html', context)
+
+    def post(self, request, question_id, choice_id):
+        question = get_object_or_404(Question, pk=question_id)
+        choice = get_object_or_404(Choice, pk=choice_id)
+        form = ChoiceForm(request.POST)
+        if form.is_valid():
+            choice.question = form.cleaned_data["question"]
+            choice.choice_text = form.cleaned_data["choice_text"]
+            choice.votes = form.cleaned_data["votes"]
+            choice.save()
+        else:
+            messages.error(request, 'Message: Form is not valid')
+            return HttpResponseRedirect(reverse('polls:edit_choice'))
+        return HttpResponseRedirect(reverse('polls:detail', args=(question.id,)))
 
 
 class ResultsView(View):
@@ -87,7 +153,10 @@ class VoteView(View):
             messages.error(request, 'Message: You didnt select a choice.')
             return HttpResponseRedirect(reverse('polls:detail', args=(question.id,)))
         else:
-            selected_choice.votes += 1
+            try:
+                selected_choice.votes += 1
+            except TypeError:
+                selected_choice.votes = 1
             selected_choice.save()
             return HttpResponseRedirect(reverse('polls:results', args=(question.id,)))
 

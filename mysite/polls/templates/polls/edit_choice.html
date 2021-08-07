@@ -1,0 +1,20 @@
+{% extends 'polls/base.html' %}
+{% load static %}
+{% block content %}
+
+{% if messages %}
+    {% for message in messages %}
+<h3>{{ message }}</h3>
+    {% endfor %}
+{% endif %}
+
+<form action="{% url 'polls:edit_choice' question.id choice.id %}" method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="submit" value="Zapisz">
+</form>
+
+
+<link rel="stylesheet" type="text/css" href="{% static 'polls/style.css' %}">
+
+{% endblock %}
