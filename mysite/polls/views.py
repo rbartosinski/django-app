@@ -1,15 +1,19 @@
 from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.contrib.auth.models import User
+from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse, Http404, HttpResponseRedirect
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
 from django.views import generic, View
 
 from .models import Question, Choice
-from .forms import QuestionForm, ChoiceForm
+from .forms import QuestionForm, ChoiceForm, LoginForm, RegisterForm
 
 
-class IndexView(View):
+class IndexView(LoginRequiredMixin, View):
 
     def get(self, request):
         latest_question_list = Question.objects.filter(pub_date__lte=timezone.now()).order_by('-pub_date')
@@ -30,7 +34,9 @@ class IndexView(View):
         return HttpResponseRedirect(reverse('polls:index'))
 
 
-class DetailView(View):
+class DetailView(PermissionRequiredMixin, View):
+    permission_required = 'polls.view_question'
+    raise_exception = True
 
     def get(self, request, question_id):
         question = get_object_or_404(Question, pk=question_id)
@@ -40,7 +46,9 @@ class DetailView(View):
         return render(request, 'polls/detail.html', context)
 
 
-class EditQuestionView(View):
+class EditQuestionView(PermissionRequiredMixin, View):
+    permission_required = 'polls.change_question'
+    raise_exception = True
 
     def get(self, request, question_id):
         question = get_object_or_404(Question, pk=question_id)
@@ -159,6 +167,87 @@ class VoteView(View):
                 selected_choice.votes = 1
             selected_choice.save()
             return HttpResponseRedirect(reverse('polls:results', args=(question.id,)))
+
+
+class LoginView(View):
+
+    def get(self, request):
+        ctx = {
+            'form': LoginForm,
+        }
+        return render(request, 'login.html', ctx)
+
+    def post(self, request):
+        form = LoginForm(request.POST)
+        if form.is_valid():
+            username = form.cleaned_data['username']
+            password = form.cleaned_data['password']
+            user = authenticate(username=username, password=password)
+            if user:
+                login(request, user)
+                url = request.GET.get('next')
+                if url:
+                    return redirect(url)
+                return HttpResponseRedirect(reverse('polls:index'))
+
+            form.add_error(field=None, error='Zły login lub hasło!')
+
+        ctx = {
+            'form': form,
+        }
+        messages.error(request, 'Zły login lub hasło.')
+        return render(request, 'login.html', ctx)
+
+
+class RegisterView(View):
+
+    def get(self, request):
+        form = RegisterForm()
+        ctx = {
+            'form': form,
+        }
+        return render(request, 'register.html', ctx)
+
+    def post(self, request):
+        message = None
+        form = RegisterForm(request.POST)
+        if form.is_valid():
+            if form.cleaned_data['password'] == form.cleaned_data['password_confirmation']:
+                username_selected = form.cleaned_data['username']
+                email_selected = form.cleaned_data['email']
+                user = False
+                try:
+                    user = User.objects.get(username=username_selected)
+                    message = "User exist."
+                except ObjectDoesNotExist:
+                    pass
+                try:
+                    user = User.objects.get(email=email_selected)
+                    message = "Email exist."
+                except ObjectDoesNotExist:
+                    pass
+                if user:
+                    messages.error(request, message)
+                    return HttpResponseRedirect(reverse('register'))
+                else:
+                    user = User.objects.create_user(
+                        username=username_selected,
+                        email=email_selected,
+                        password=form.cleaned_data['password']
+                    )
+                    messages.success(request, 'Your user was created.')
+                    return HttpResponseRedirect(reverse('login'))
+            else:
+                message = "Passwords are not the same."
+                messages.error(request, message)
+                return HttpResponseRedirect(reverse('register'))
+
+
+class LogoutView(View):
+
+    def get(self, request):
+        logout(request)
+        return HttpResponseRedirect(reverse('login'))
 
 
 # class IndexView(generic.ListView):

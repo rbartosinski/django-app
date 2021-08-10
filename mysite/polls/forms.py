@@ -14,3 +14,15 @@ class ChoiceForm(forms.Form):
     question = forms.ModelChoiceField(queryset=Question.objects.all())
     choice_text = forms.CharField(label="Podaj wybór", max_length=200)
     votes = forms.IntegerField(required=False)
+
+
+class LoginForm(forms.Form):
+    username = forms.CharField(label="Podaj nazwę użytkownika")
+    password = forms.CharField(label="Hasło", widget=forms.PasswordInput)
+
+
+class RegisterForm(forms.Form):
+    username = forms.CharField(label='Your name')
+    password = forms.CharField(widget=forms.PasswordInput, label='Password')
+    password_confirmation = forms.CharField(widget=forms.PasswordInput, label='Password confirmation')
+    email = forms.EmailField(label='Your email')
