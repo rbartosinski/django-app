@@ -7,16 +7,20 @@ from django.http import HttpResponse, Http404, HttpResponseRedirect
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.decorators import method_decorator
 from django.views import generic, View
+from django.views.decorators.csrf import csrf_exempt
 
 from .models import Question, Choice
 from .forms import QuestionForm, ChoiceForm, LoginForm, RegisterForm
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class IndexView(LoginRequiredMixin, View):
 
     def get(self, request):
-        latest_question_list = Question.objects.filter(pub_date__lte=timezone.now()).order_by('-pub_date')
+        latest_question_list = Question.objects.filter(
+            pub_date__lte=timezone.now()).order_by('-pub_date')
         form = QuestionForm()
         context = {
             'form': form,
@@ -72,19 +76,28 @@ class EditQuestionView(PermissionRequiredMixin, View):
         else:
             messages.error(request, 'Message: Form is not valid')
             return HttpResponseRedirect(reverse('polls:edit'))
-        return HttpResponseRedirect(reverse('polls:detail', args=(question.id,)))
+        return HttpResponseRedirect(
+            reverse(
+                'polls:detail', args=(
+                    question.id,)))
 
 
-class DeleteQuestionView(View):
+class DeleteQuestionView(PermissionRequiredMixin, View):
+    permission_required = 'polls.delete_question'
+    raise_exception = True
 
     def get(self, request, question_id):
         question = get_object_or_404(Question, pk=question_id)
         question.delete()
-        messages.info(request, 'Message: Question ID {} deleted'.format(question_id))
+        messages.info(
+            request,
+            'Message: Question ID {} deleted'.format(question_id))
         return HttpResponseRedirect(reverse('polls:index'))
 
 
-class AddChoiceView(View):
+class AddChoiceView(PermissionRequiredMixin, View):
+    permission_required = 'polls.add_question'
+    raise_exception = True
 
     def get(self, request, question_id):
         question = get_object_or_404(Question, pk=question_id)
@@ -106,10 +119,15 @@ class AddChoiceView(View):
         else:
             messages.error(request, 'Message: Form is not valid')
             return HttpResponseRedirect(reverse('polls:add_choice'))
-        return HttpResponseRedirect(reverse('polls:detail', args=(question.id,)))
+        return HttpResponseRedirect(
+            reverse(
+                'polls:detail', args=(
+                    question.id,)))
 
 
-class EditChoiceView(View):
+class EditChoiceView(PermissionRequiredMixin, View):
+    permission_required = 'polls.change_choice'
+    raise_exception = True
 
     def get(self, request, question_id, choice_id):
         question = get_object_or_404(Question, pk=question_id)
@@ -138,10 +156,15 @@ class EditChoiceView(View):
         else:
             messages.error(request, 'Message: Form is not valid')
             return HttpResponseRedirect(reverse('polls:edit_choice'))
-        return HttpResponseRedirect(reverse('polls:detail', args=(question.id,)))
+        return HttpResponseRedirect(
+            reverse(
+                'polls:detail', args=(
+                    question.id,)))
 
 
-class ResultsView(View):
+class ResultsView(PermissionRequiredMixin, View):
+    permission_required = 'polls.view_question'
+    raise_exception = True
 
     def get(self, request, question_id):
         question = get_object_or_404(Question, pk=question_id)
@@ -151,22 +174,27 @@ class ResultsView(View):
         return render(request, 'polls/results.html', context)
 
 
-class VoteView(View):
+class VoteView(PermissionRequiredMixin, View):
+    permission_required = 'polls.change_choice'
+    raise_exception = True
 
     def post(self, request, question_id):
         question = get_object_or_404(Question, pk=question_id)
         try:
-            selected_choice = question.choice_set.get(pk=request.POST['choice'])
+            selected_choice = question.choice_set.get(
+                pk=request.POST['choice'])
         except (KeyError, Choice.DoesNotExist):
             messages.error(request, 'Message: You didnt select a choice.')
-            return HttpResponseRedirect(reverse('polls:detail', args=(question.id,)))
+            return HttpResponseRedirect(
+                reverse('polls:detail', args=(question.id,)))
         else:
             try:
                 selected_choice.votes += 1
             except TypeError:
                 selected_choice.votes = 1
             selected_choice.save()
-            return HttpResponseRedirect(reverse('polls:results', args=(question.id,)))
+            return HttpResponseRedirect(
+                reverse('polls:results', args=(question.id,)))
 
 
 class LoginView(View):
@@ -255,7 +283,8 @@ class LogoutView(View):
 #     context_object_name = 'latest_question_list'
 #
 #     def get_queryset(self):
-#         return Question.objects.filter(pub_date__lte=timezone.now()).order_by('-pub_date')
+# return
+# Question.objects.filter(pub_date__lte=timezone.now()).order_by('-pub_date')
 
 # class ResultsView(generic.DetailView):
 #     model = Question
@@ -346,4 +375,5 @@ class LogoutView(View):
 #         # selected_choice.choice_text = "Słoń"
 #         selected_choice.save()
 #         print("var - selected_choice votes - after: ", selected_choice.votes)
-#         return HttpResponseRedirect(reverse('polls:results', args=(question.id,)))
+# return HttpResponseRedirect(reverse('polls:results',
+# args=(question.id,)))
