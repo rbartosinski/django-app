@@ -105,6 +105,7 @@ class AddChoiceView(PermissionRequiredMixin, View):
             'question': question_id,
             'votes': 0,
         })
+        print(form)
         context = {
             'form': form,
             'question': question,

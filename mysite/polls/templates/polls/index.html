@@ -1,5 +1,7 @@
 {% extends 'polls/base.html' %}
 {% load static %}
+{% load bootstrap %}
+
 {% block content %}
 
 {% if messages %}
@@ -22,12 +24,12 @@
 
 <form action="{% url 'polls:index' %}" method="post">
     {% csrf_token %}
-    {{ form.as_p }}
-    <input type="submit" value="Zapisz">
+    {{ form|bootstrap }}
+    <input type="submit" type="button" class="btn btn-primary" value="Zapisz">
 </form>
-
+<br>
 <p>
-<a href="{% url 'logout' %}">Wyloguj</a>
+<a href="{% url 'logout' %}" type="button" class="btn btn-success">Wyloguj</a>
 </p>
 
 <link rel="stylesheet" type="text/css" href="{% static 'polls/style.css' %}">
