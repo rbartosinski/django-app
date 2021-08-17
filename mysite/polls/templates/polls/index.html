@@ -1,0 +1,37 @@
+{% extends 'polls/base.html' %}
+{% load static %}
+{% load bootstrap %}
+
+{% block content %}
+
+{% if messages %}
+    {% for message in messages %}
+<h3>{{ message }}</h3>
+    {% endfor %}
+{% endif %}
+
+
+{% if latest_question_list %}
+    <ul>
+    {% for question in latest_question_list %}
+        <li><a href="{% url 'polls:detail' question.pk %}">{{ question.question_text }}</a> -
+            <a href="{% url 'polls:delete' question.pk %}">Usuń pytanie</a></li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>No polls are available.</p>
+{% endif %}
+
+<form action="{% url 'polls:index' %}" method="post">
+    {% csrf_token %}
+    {{ form|bootstrap }}
+    <input type="submit" type="button" class="btn btn-primary" value="Zapisz">
+</form>
+<br>
+<p>
+<a href="{% url 'logout' %}" type="button" class="btn btn-success">Wyloguj</a>
+</p>
+
+<link rel="stylesheet" type="text/css" href="{% static 'polls/style.css' %}">
+
+{% endblock %}
